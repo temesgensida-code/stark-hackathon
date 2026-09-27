@@ -1,0 +1,3 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+# add as modules are built: sqlalchemy, psycopg[binary], redis, rq, httpx, pymupdf, docling

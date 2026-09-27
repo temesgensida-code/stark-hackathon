@@ -1,0 +1,20 @@
+# Local development: Postgres + Redis + API. Run the web app with `npm run dev` in apps/web.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: braille
+      POSTGRES_PASSWORD: braille
+      POSTGRES_DB: braille_talks
+    ports: ["5432:5432"]
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+  api:
+    build: apps/api
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://braille:braille@db:5432/braille_talks
+      REDIS_URL: redis://redis:6379/0
+    ports: ["8000:8000"]
+    depends_on: [db, redis]

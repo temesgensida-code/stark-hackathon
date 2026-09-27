@@ -1,0 +1,31 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  api:
+    runs-on: ubuntu-24.04
+    defaults: { run: { working-directory: apps/api } }
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y liblouis-data python3-louis
+      - run: /usr/bin/python3 -m pip install --break-system-packages -r requirements.txt -r requirements-dev.txt
+      - run: /usr/bin/python3 -m pytest -q
+  bridge:
+    runs-on: ubuntu-24.04
+    defaults: { run: { working-directory: bridge } }
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y python3-brlapi
+      - run: /usr/bin/python3 -m pip install --break-system-packages -r requirements.txt pytest
+      - run: /usr/bin/python3 -m pytest -q
+  web:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: sudo apt-get update && sudo apt-get install -y liblouis-data python3-louis python3-brlapi
+      - run: /usr/bin/python3 -m pip install --break-system-packages -r apps/api/requirements.txt -r bridge/requirements.txt
+      - run: npm ci || npm install
+        working-directory: apps/web
+      - run: npm run typecheck && npm test
+        working-directory: apps/web
