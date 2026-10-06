@@ -19,6 +19,7 @@ import { ApiTranslator, BrailleManager, ManagerCallbacks } from "@/lib/braille/b
 import { BridgeDisplay } from "@/lib/braille/bridgeDisplay";
 import { isWebHidSupported, reconnectHidBrailleDisplay, requestHidBrailleDisplay } from "@/lib/braille/hidBrailleDisplay";
 import { ScreenReaderDisplay } from "@/lib/braille/screenReaderDisplay";
+import { VirtualBrailleDisplay } from "@/lib/braille/virtualDisplay";
 import { BrailleDisplay, BrailleDisplayInfo, cellsToUnicode } from "@/lib/braille/types";
 
 interface BrailleCtx {
@@ -28,6 +29,7 @@ interface BrailleCtx {
   connectHid(): Promise<void>;
   connectBridge(): Promise<void>;
   connectScreenReader(): Promise<void>;
+  connectVirtual(mode?: "local" | "ws" | "auto"): Promise<void>;
   disconnect(): Promise<void>;
   setTable(table: string): void;
   lineRef: React.RefObject<HTMLDivElement | null>;
@@ -109,6 +111,19 @@ export function BrailleProvider({
     if (lineRef.current) await attach(new ScreenReaderDisplay(lineRef.current));
   }, [attach]);
 
+  const connectVirtual = useCallback(
+    async (mode: "local" | "ws" | "auto" = "auto") => {
+      try {
+        setStatus("Connecting to Virtual Braille Simulator...");
+        const d = await VirtualBrailleDisplay.connect({ mode });
+        await attach(d);
+      } catch (e) {
+        setStatus(`Virtual display error: ${(e as Error).message}`);
+      }
+    },
+    [attach],
+  );
+
   const disconnect = useCallback(async () => {
     await manager.detach();
     setInfo(null);
@@ -119,7 +134,7 @@ export function BrailleProvider({
     manager.table = t;
   }, [manager]);
 
-  // Silent reconnect on load: approved HID display, then a running bridge.
+  // Silent reconnect on load: approved HID display, then a running bridge, then virtual fallback.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -127,7 +142,14 @@ export function BrailleProvider({
       if (cancelled) return;
       if (hid) return attach(hid);
       const bridge = await BridgeDisplay.connect(undefined, 800).catch(() => null);
-      if (!cancelled && bridge) attach(bridge);
+      if (cancelled) return;
+      if (bridge) return attach(bridge);
+
+      // Automatic fallback to Virtual Simulator in local development when no hardware or bridge is detected
+      const virtual = await VirtualBrailleDisplay.connect({ mode: "auto", timeoutMs: 500 }).catch(() => null);
+      if (!cancelled && virtual) {
+        await attach(virtual);
+      }
     })();
     return () => {
       cancelled = true;
@@ -146,7 +168,7 @@ export function BrailleProvider({
     return () => window.removeEventListener("keydown", onKey);
   }, [connectHid]);
 
-  const value = { manager, info, status, connectHid, connectBridge, connectScreenReader, disconnect, setTable, lineRef };
+  const value = { manager, info, status, connectHid, connectBridge, connectScreenReader, connectVirtual, disconnect, setTable, lineRef };
   return (
     <Ctx.Provider value={value}>
       {children}
@@ -183,6 +205,9 @@ export function BrailleDisplayConnect({ tables }: { tables?: { id: string; label
         </button>
         <button type="button" onClick={b.connectScreenReader}>
           Use my screen reader&apos;s display
+        </button>
+        <button type="button" onClick={() => void b.connectVirtual()}>
+          Connect Virtual Simulator
         </button>
         {b.info && (
           <button type="button" onClick={b.disconnect}>

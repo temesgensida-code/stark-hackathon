@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+import asyncio
+
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import Response
 from pydantic import BaseModel, Field, model_validator
 
@@ -84,3 +86,93 @@ def brf(body: BrfIn):
         media_type="application/x-brf",
         headers={"Content-Disposition": 'attachment; filename="braille-talks.brf"'},
     )
+
+
+class SimulationHub:
+    def __init__(self, cell_count: int = 40):
+        self.cells: list[int] = [0] * cell_count
+        self.listeners: list[WebSocket] = []
+        self._lock = asyncio.Lock()
+
+    async def connect(self, ws: WebSocket):
+        await ws.accept()
+        async with self._lock:
+            self.listeners.append(ws)
+        # Send hello handshake with 40-cell configuration
+        await ws.send_json({
+            "type": "hello",
+            "driver": "virtual-sim",
+            "model": "Virtual 40-Cell Display",
+            "cells": len(self.cells),
+            "rows": 1,
+            "version": 1,
+        })
+        # Send current cell state
+        await ws.send_json({"type": "write", "cells": list(self.cells)})
+
+    async def disconnect(self, ws: WebSocket):
+        async with self._lock:
+            if ws in self.listeners:
+                self.listeners.remove(ws)
+
+    def update_cells(self, cells: list[int]) -> list[int]:
+        size = len(self.cells)
+        clean = [int(c) & 0xFF for c in cells[:size]]
+        self.cells = clean + [0] * (size - len(clean))
+        return self.cells
+
+    async def broadcast(self, message: dict, sender: WebSocket | None = None):
+        async with self._lock:
+            targets = list(self.listeners)
+        for ws in targets:
+            if ws != sender:
+                try:
+                    await ws.send_json(message)
+                except Exception:
+                    pass
+
+
+hub = SimulationHub()
+
+
+@router.websocket("/simulate")
+async def simulate_braille_ws(websocket: WebSocket):
+    await hub.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_json()
+            msg_type = data.get("type")
+            if msg_type == "write":
+                cells = data.get("cells", [])
+                if isinstance(cells, list):
+                    updated = hub.update_cells(cells)
+                    await hub.broadcast({"type": "write", "cells": updated}, sender=websocket)
+            elif msg_type == "info":
+                await websocket.send_json({
+                    "type": "hello",
+                    "driver": "virtual-sim",
+                    "model": "Virtual 40-Cell Display",
+                    "cells": len(hub.cells),
+                    "rows": 1,
+                    "version": 1,
+                })
+                await websocket.send_json({"type": "write", "cells": list(hub.cells)})
+            elif msg_type == "key":
+                await hub.broadcast(data, sender=websocket)
+            elif msg_type == "reset":
+                updated = hub.update_cells([])
+                await hub.broadcast({"type": "write", "cells": updated})
+    except (WebSocketDisconnect, Exception):
+        pass
+    finally:
+        await hub.disconnect(websocket)
+
+
+@router.get("/simulate/state")
+def get_simulate_state():
+    return {
+        "cells": hub.cells,
+        "listeners": len(hub.listeners),
+        "model": "Virtual 40-Cell Display",
+    }
+

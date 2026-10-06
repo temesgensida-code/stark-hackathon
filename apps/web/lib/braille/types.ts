@@ -18,7 +18,7 @@ export type BrailleKeyEvent =
   | { kind: "char"; char: string } // display already translated the input to a character
   | { kind: "command"; code: number }; // anything unmapped, passed through for debugging
 
-export type BrailleTransport = "webhid" | "bridge" | "screen-reader";
+export type BrailleTransport = "webhid" | "bridge" | "screen-reader" | "virtual";
 
 export interface BrailleDisplayInfo {
   transport: BrailleTransport;
