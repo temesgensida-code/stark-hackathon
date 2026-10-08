@@ -2,7 +2,7 @@
 
 An AI research assistant for blind and visually impaired researchers: search, read, take notes on and publish academic papers by voice and refreshable Braille display.
 
-Built for the STARK Hackathon (Sep 9 - Oct 2, 2026). This is the idea-stage package: documents plus starter code. Modules marked [placeholder] are built for the final submission.
+Built for the STARK Hackathon (Sep 9 - Oct 2, 2026).  All modules below are built; see docs/backend-m1.md and docs/frontend-m2.md for what is verified.
 
 ## Repository layout
 
@@ -12,27 +12,29 @@ apps/
     app/
       main.py           entry point
       braille/          Liblouis translation, back-translation, BRF export   [done]
-      papers/           Scholarxiv search and paper routes                   [placeholder]
-      documents/        PDF / BRF upload and parsing pipeline                [placeholder]
-      ai/               summaries and Q&A with section citations             [placeholder]
-      notes/            notes by keyboard, voice or Braille                  [placeholder]
-      core/             settings and database                                [placeholder]
+      papers/           Scholarxiv search and paper routes                   [done]
+      documents/        PDF / BRF upload and parsing pipeline                [done]
+      ai/               summaries and Q&A with section citations             [done]
+      notes/            notes by keyboard, voice or Braille                  [done]
+      core/             settings and database                                [done]
     tests/
     Dockerfile          installs Liblouis; used by EthioDeploy
   web/                  Next.js frontend
     app/                pages: home, papers/[id] reader, notes, settings/braille
     components/
       braille/          Braille display connect panel                        [done]
-      voice/            Voxide voice assistant                               [placeholder]
-      reader/           section view, six-key Braille input                  [placeholder]
+      voice/            Voxide voice assistant                               [done]
+      reader/           section view, six-key Braille input                  [done]
     lib/
       braille/          WebHID, bridge and screen-reader display drivers     [done]
-      api/              backend client                                       [placeholder]
+      api/              backend client                                       [done]
     tests/
 bridge/                 local BrlAPI <-> WebSocket bridge for Braille displays [done]
 docs/
   architecture.md       system overview and module status
   braille-display.md    how users connect a Braille display, key map
+  manual-testing.md     what to check by hand before a demo (voice, screen reader, Braille)
+  demo-script.md        the 3-minute demo, no hardware needed
   SRS.md                software requirements specification
   STARK-requirements.md how each hackathon rule and judging criterion is met
   decisions/            architecture decisions (AD-1 to AD-12)
@@ -45,6 +47,16 @@ docker-compose.yml      local Postgres + Redis + API
 ```
 
 ## Run locally
+
+Fastest path (Docker for Postgres, Redis, API and parse worker, then the web app):
+
+```bash
+cp .env.example .env            # add SCHOLARXIV_API_KEY; put the NEXT_PUBLIC_* lines in apps/web/.env.local too
+docker compose up -d --build    # API on http://localhost:8000/docs, web on http://localhost:3000
+# For web development instead of the web container: cd apps/web && npm install && npm run dev
+```
+
+Without Docker:
 
 ```bash
 cp .env.example .env
