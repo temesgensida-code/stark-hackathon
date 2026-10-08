@@ -19,15 +19,18 @@ User (voice + keyboard + Braille display)
 | --- | --- | --- |
 | Braille translation API | `apps/api/app/braille` | Done, tested |
 | Braille display drivers (WebHID, bridge, screen reader) | `apps/web/lib/braille`, `bridge/` | Done, tested with simulated displays |
-| Braille connect panel | `apps/web/components/braille` | Done, not yet mounted in layout |
-| Scholarxiv client + paper routes | `apps/api/app/papers` | Placeholder |
-| PDF / BRF parsing pipeline | `apps/api/app/documents` | Placeholder |
-| LLM summaries and Q&A | `apps/api/app/ai` | Placeholder |
-| Notes | `apps/api/app/notes`, `apps/web/app/notes` | Placeholder |
-| Voice (Voxide) | `apps/web/components/voice` | Placeholder |
-| Reader UI | `apps/web/app/papers/[id]`, `apps/web/components/reader` | Placeholder |
+| Braille connect panel | `apps/web/components/braille` | Done; provider mounted in layout, panel on `/settings/braille` |
+| Scholarxiv client + paper routes | `apps/api/app/papers` | Done, tested with a fake client; verify the real API |
+| PDF / BRF parsing pipeline | `apps/api/app/documents` | Done (PyMuPDF tested; Docling untested) |
+| LLM summaries and Q&A | `apps/api/app/ai` | Done, tested with a fake LLM |
+| Notes | Done (API and `apps/web/app/notes`) |
+| Voice (Voxide) | `apps/web/components/voice` | Done: 10 actions registered; not yet tested by speaking |
+| Reader UI, home, API client | `apps/web/app`, `apps/web/components/reader`, `apps/web/lib/api` | Done, rendered against the live backend |
 
 ## Why the Braille bridge is not an MCP server
 
 The bridge carries fixed, real-time hardware I/O (routing keys, panning, cell writes) with no AI decision in the loop.
 MCP is used where an AI decides what to call: Scholarxiv paper search.
+
+Backend details: [backend-m1.md](backend-m1.md).
+Frontend details: [frontend-m2.md](frontend-m2.md).

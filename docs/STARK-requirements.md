@@ -6,9 +6,9 @@ Source: https://hackathon.stark.et/requirements · judging: https://hackathon.st
 
 | # | Rule | How we meet it | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| 1 | Prove your ideation on Scholarxiv | Public Scholarxiv collection of prior work (screen readers and PDFs, Braille displays, Amharic Braille), with a comment on each paper saying what we used or rejected. The product also builds on Scholarxiv: paper search through the Papers API / MCP and LLM calls through the Scholarxiv Router. | Collection link; `docs/ideation.md`; `docs/decisions/` | Docs ready; collection to create |
-| 2 | Voice interaction through Voxide | Voice is the main way to use the app: search, open, navigate sections, summarize, ask, take notes, send to Braille. English first, Amharic when supported. | `apps/web/components/voice/` | Designed; to build |
-| 3 | Host on EthioDeploy (optional, advantage) | Two services (`web`, `api`) plus Postgres and Redis add-ons. | `infra/ethiodeploy.md`; live URL | Planned |
+| 1 | Prove your ideation on Scholarxiv | Public Scholarxiv collection of prior work (screen readers and PDFs, Braille displays, Amharic Braille), with a comment on each paper saying what we used or rejected. The product also builds on Scholarxiv: paper search through the Papers API / MCP and LLM calls through the Scholarxiv Router. | [Public collection of 14 papers](https://www.scholarxiv.com/collections/6ac6a53e22182abc8c85e4e1) with a comment on each; `docs/ideation.md`; `docs/decisions/` | Done |
+| 2 | Voice interaction through Voxide | Voice is the main way to use the app: search, open, navigate sections, summarize, ask, take notes, send to Braille. English first, Amharic when supported. | `apps/web/components/voice/` | Built: 10 actions, Alt+V to talk, English/Amharic/Afaan Oromoo. Not yet tested by speaking |
+| 3 | Host on EthioDeploy (optional, advantage) | Two services (`web`, `api`) plus Postgres and Redis add-ons. | `infra/ethiodeploy.md`; live URL | Dockerfiles and variables ready; deploy needs your account |
 | 4 | Build from scratch, on the clock | Repo created during the window; per-member commits; daily STARK changelogs. | GitHub history; `docs/changelog/` | Ongoing |
 | 5 | Local payments via Links.et (only if taking payments) | Not applicable: the product is free. | — | N/A |
 | 6 | ALX registration (optional) | Team members register on announcement day if not already ALX members. | — | Optional |
