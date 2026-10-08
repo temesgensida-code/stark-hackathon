@@ -74,6 +74,12 @@ export class BrailleManager {
     private cb: ManagerCallbacks = {},
   ) {}
 
+  /** Switch the Braille code and redraw the current text with it. */
+  async setTable(table: string): Promise<void> {
+    this.table = table;
+    if (this.text) await this.show(this.text, this.caret);
+  }
+
   get connected() {
     return this.display?.info ?? null;
   }

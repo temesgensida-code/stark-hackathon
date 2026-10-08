@@ -117,12 +117,14 @@ export function BrailleHardwareSimulator({
   const dispatchKey = useCallback(
     (event: BrailleKeyEvent) => {
       virtualSimulatorBus.sendKey(event);
-      if (brailleCtx?.manager) {
+      // A connected virtual display already passes the key to the manager. Calling it here too
+      // handled every key twice (rocker skipped a result, "pdf" typed as "ppddff").
+      if (brailleCtx?.manager && brailleCtx.info?.transport !== "virtual") {
         void brailleCtx.manager.handleKey(event);
       }
       setLastAction(`Key: ${event.kind} ${"dir" in event ? event.dir : "index" in event ? event.index : "dots" in event ? event.dots : ""}`);
     },
-    [brailleCtx?.manager],
+    [brailleCtx?.manager, brailleCtx?.info?.transport],
   );
 
   // Handle routing button click
@@ -195,6 +197,14 @@ export function BrailleHardwareSimulator({
     dispatchKey({ kind: "enter" });
   }, [dispatchKey, pendingDots]);
 
+  // Command: Space pressed together with the chosen dots (Space + S summarizes, Space + L lists commands)
+  const handleCommand = useCallback(() => {
+    if (pendingDots.length === 0) return;
+    dispatchKey({ kind: "chord", dots: dotsToMask(pendingDots) });
+    setLastAction(`Command: Space + dots ${pendingDots.join("-")}`);
+    setPendingDots([]);
+  }, [dispatchKey, pendingDots]);
+
   // Toggle connection mode (In-Memory vs WebSocket)
   const toggleConnectionMode = useCallback(async () => {
     if (connectionMode === "local") {
@@ -242,7 +252,7 @@ export function BrailleHardwareSimulator({
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      if (e.target instanceof HTMLElement && e.target.closest("input, textarea, select, [role=textbox], [contenteditable]")) {
         return;
       }
 
@@ -273,8 +283,12 @@ export function BrailleHardwareSimulator({
       }
     };
 
+    document.body.dataset.brailleCapture = "on"; // page shortcuts such as J and K stand down while keys are chords
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      delete document.body.dataset.brailleCapture;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [handleBackspace, handleEnter, handleLine, handlePan, handleSpace, keyboardCapture, toggleDot]);
 
   // Reset simulator
@@ -400,7 +414,7 @@ export function BrailleHardwareSimulator({
           >
             VIRTUAL BRAILLE {cellsCount}
           </h2>
-          <span style={{ fontSize: "0.7rem", color: "#64748b" }}>Refreshable Tactile Notetaker • 8-Pin Cells</span>
+          <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>Refreshable Tactile Notetaker • 8-Pin Cells</span>
         </div>
 
         {/* Quick Toggles */}
@@ -592,6 +606,23 @@ export function BrailleHardwareSimulator({
                     }}
                   >
                     ↵ Enter
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCommand}
+                    disabled={pendingDots.length === 0}
+                    title="Command: Space pressed with the chosen dots (for example Space + S to summarize, Space + L for the list)"
+                    style={{
+                      background: "#1e2430",
+                      color: "#fcd34d",
+                      border: "1px solid #374151",
+                      borderRadius: "6px",
+                      fontSize: "0.7rem",
+                      padding: "3px 8px",
+                      cursor: pendingDots.length ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    ⌘ Space + dots
                   </button>
                 </div>
               </div>
@@ -871,7 +902,7 @@ export function BrailleHardwareSimulator({
                         >
                           {maskToUnicode(byte)}
                         </div>
-                        <div style={{ fontSize: "0.6rem", color: "#64748b" }}>{index + 1}</div>
+                        <div style={{ fontSize: "0.6rem", color: "#94a3b8" }}>{index + 1}</div>
                       </div>
                     )}
                   </div>
@@ -983,7 +1014,7 @@ export function BrailleHardwareSimulator({
 
             {/* Action Buttons */}
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ color: "#64748b", fontSize: "0.75rem", fontStyle: "italic" }}>
+              <span style={{ color: "#94a3b8", fontSize: "0.75rem", fontStyle: "italic" }}>
                 Status: {lastAction}
               </span>
               <button
@@ -1008,7 +1039,7 @@ export function BrailleHardwareSimulator({
                   background: "#1e293b",
                   border: "1px solid #334155",
                   borderRadius: "6px",
-                  color: "#ef4444",
+                  color: "#fca5a5",
                   padding: "4px 8px",
                   cursor: "pointer",
                   fontSize: "0.75rem",
