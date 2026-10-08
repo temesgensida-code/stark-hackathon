@@ -1,3 +1,5 @@
+# Set BUILDX_NO_DEFAULT_ATTESTATIONS=1 in your environment. Without it every build stamps a new
+# attestation, the image ID changes even when nothing changed, and `up --build` restarts the app.
 # Local stack: Postgres + Redis + API + parse worker + web. For web development, run `npm run dev` in apps/web instead of the `web` service.
 x-api-env: &api-env
   DATABASE_URL: postgresql+psycopg://braille:braille@db:5432/braille_talks
@@ -34,7 +36,8 @@ services:
   api:
     restart: unless-stopped  # come back when Docker restarts (sleep, reboot, engine restart)
     init: true  # forwards stop signals, so the container stops in about a second instead of being killed after 10
-    build: apps/api
+    build:
+      context: apps/api
     env_file: .env
     environment: *api-env
     ports: ["8000:8000"]
@@ -45,7 +48,8 @@ services:
   worker:
     restart: unless-stopped  # come back when Docker restarts (sleep, reboot, engine restart)
     init: true  # forwards stop signals, so the container stops in about a second instead of being killed after 10
-    build: apps/api
+    build:
+      context: apps/api
     command: python -m app.worker
     env_file: .env
     environment: *api-env
