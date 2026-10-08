@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Iterator
 
 from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, create_engine
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -88,7 +89,15 @@ SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
 
 def init_db() -> None:
-    Base.metadata.create_all(engine)
+    # Several API processes can start at once (parallel tests, replicas). Each checks for the
+    # tables, then creates them, so one may lose the race with "already exists". That is harmless.
+    for attempt in range(3):
+        try:
+            Base.metadata.create_all(engine)
+            return
+        except DBAPIError as exc:
+            if "already exists" not in str(exc) or attempt == 2:
+                raise
 
 
 def get_db() -> Iterator[Session]:
