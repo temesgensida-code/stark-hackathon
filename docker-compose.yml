@@ -1,20 +1,69 @@
-# Local development: Postgres + Redis + API. Run the web app with `npm run dev` in apps/web.
+# Local stack: Postgres + Redis + API + parse worker + web. For web development, run `npm run dev` in apps/web instead of the `web` service.
+x-api-env: &api-env
+  DATABASE_URL: postgresql+psycopg://braille:braille@db:5432/braille_talks
+  REDIS_URL: redis://redis:6379/0
+  JOB_BACKEND: rq
+  UPLOAD_DIR: /data/uploads
+
 services:
   db:
+    restart: unless-stopped  # come back when Docker restarts (sleep, reboot, engine restart)
     image: postgres:16
     environment:
       POSTGRES_USER: braille
       POSTGRES_PASSWORD: braille
       POSTGRES_DB: braille_talks
     ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U braille -d braille_talks"]
+      interval: 30s        # quiet once running (fast checks filled `docker events` with noise)
+      start_period: 30s
+      start_interval: 2s   # fast checks only while starting, so the API is not kept waiting
+      retries: 5
   redis:
+    restart: unless-stopped  # come back when Docker restarts (sleep, reboot, engine restart)
     image: redis:7
     ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s        # quiet once running (fast checks filled `docker events` with noise)
+      start_period: 30s
+      start_interval: 2s   # fast checks only while starting, so the API is not kept waiting
+      retries: 5
   api:
+    restart: unless-stopped  # come back when Docker restarts (sleep, reboot, engine restart)
+    init: true  # forwards stop signals, so the container stops in about a second instead of being killed after 10
     build: apps/api
     env_file: .env
-    environment:
-      DATABASE_URL: postgresql+psycopg://braille:braille@db:5432/braille_talks
-      REDIS_URL: redis://redis:6379/0
+    environment: *api-env
     ports: ["8000:8000"]
-    depends_on: [db, redis]
+    volumes: [uploads:/data/uploads]  # shared with the worker, which parses what the API saved
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+  worker:
+    restart: unless-stopped  # come back when Docker restarts (sleep, reboot, engine restart)
+    init: true  # forwards stop signals, so the container stops in about a second instead of being killed after 10
+    build: apps/api
+    command: python -m app.worker
+    env_file: .env
+    environment: *api-env
+    volumes: [uploads:/data/uploads]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+  web:
+    restart: unless-stopped  # come back when Docker restarts (sleep, reboot, engine restart)
+    init: true  # forwards stop signals, so the container stops in about a second instead of being killed after 10
+    build:
+      context: apps/web
+      args:
+        API_INTERNAL_URL: http://api:8000
+        NEXT_PUBLIC_VOXIDE_PUBLIC_KEY: ${NEXT_PUBLIC_VOXIDE_PUBLIC_KEY:-}
+    ports: ["3000:3000"]
+    depends_on: [api]
+
+volumes:
+  pgdata:
+  uploads:
