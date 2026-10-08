@@ -20,6 +20,7 @@ Protocol (JSON text frames):
                    {"type":"key","kind":"pan","dir":"left"|"right"}
                    {"type":"key","kind":"line","dir":"up"|"down"}
                    {"type":"key","kind":"dots","dots":27}      typed braille chord
+                   {"type":"key","kind":"chord","dots":14}     space + dots: a command (Space + S = summarize)
                    {"type":"key","kind":"space"} | {"kind":"enter"} | {"kind":"backspace"} | {"kind":"escape"}
                    {"type":"key","kind":"char","char":"a"}     display typed a character
                    {"type":"key","kind":"command","code":1234} anything else
@@ -87,7 +88,10 @@ def decode_brlapi_key(code: int, b=None) -> dict:
     if block == b.KEY_CMD_ROUTE:
         return {"type": "key", "kind": "route", "index": arg}
     if block == b.KEY_CMD_PASSDOTS:
-        return {"type": "key", "kind": "space"} if arg == 0 else {"type": "key", "kind": "dots", "dots": arg & 0xFF}
+        dots = arg & 0xFF
+        if arg & getattr(b, "DOTC", 0x100) and dots:  # space held with the dots: a command chord (Space + S...)
+            return {"type": "key", "kind": "chord", "dots": dots}
+        return {"type": "key", "kind": "space"} if dots == 0 else {"type": "key", "kind": "dots", "dots": dots}
     if block == 0:
         simple = {
             b.KEY_CMD_FWINLT: ("pan", "left"),
@@ -173,7 +177,7 @@ class BrlapiBackend(Backend):
 class MockBackend(Backend):
     """Simulated display: prints cells to the terminal, reads keys from stdin.
 
-    stdin commands: route N | left | right | up | down | dots 1-2-5 | space | enter | backspace
+    stdin commands: route N | left | right | up | down | dots 1-2-5 | chord 2-3-4 | space | enter | backspace
     """
 
     driver = "mock"
@@ -197,11 +201,11 @@ class MockBackend(Backend):
             return {"type": "key", "kind": "pan", "dir": cmd}
         if cmd in ("up", "down"):
             return {"type": "key", "kind": "line", "dir": cmd}
-        if cmd == "dots" and rest:
+        if cmd in ("dots", "chord") and rest:
             mask = 0
             for d in rest[0].replace(",", "-").split("-"):
                 mask |= 1 << (int(d) - 1)
-            return {"type": "key", "kind": "dots", "dots": mask}
+            return {"type": "key", "kind": cmd, "dots": mask}
         if cmd in ("space", "enter", "backspace", "escape"):
             return {"type": "key", "kind": cmd}
         return None
