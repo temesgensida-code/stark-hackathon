@@ -3,6 +3,7 @@
 import React from "react";
 import { BrailleDisplayConnect } from "@/components/braille/BrailleDisplayConnect";
 import { BrailleHardwareSimulator } from "@/components/braille/BrailleHardwareSimulator";
+import { useLanguage } from "@/components/braille/AppBrailleProvider";
 
 const BRAILLE_TABLES = [
   { id: "en-ueb-g2", label: "English Unified English Braille (Grade 2 Contracted)" },
@@ -12,6 +13,7 @@ const BRAILLE_TABLES = [
 ];
 
 export default function BrailleSettingsPage() {
+  const lang = useLanguage();
   return (
     <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "28px 20px" }}>
       <div style={{ marginBottom: "28px" }}>
@@ -31,7 +33,18 @@ export default function BrailleSettingsPage() {
           marginBottom: "32px",
         }}
       >
-        <BrailleDisplayConnect tables={BRAILLE_TABLES} />
+        <BrailleDisplayConnect />
+        <p style={{ marginTop: 16 }}>
+          <label htmlFor="braille-code">Braille code </label>
+          <select id="braille-code" value={lang.table} onChange={(e) => lang.setTable(e.target.value)}>
+            {BRAILLE_TABLES.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </p>
+        <p className="muted">The language picker in the header sets this and the language of AI answers together.</p>
       </div>
 
       <div>
