@@ -23,6 +23,7 @@ SYM = brlapi.KEY_TYPE_SYM
         (CMD | brlapi.KEY_CMD_LNDN, {"kind": "line", "dir": "down"}),
         (CMD | brlapi.KEY_CMD_PASSDOTS | (brlapi.DOT1 | brlapi.DOT2 | brlapi.DOT5), {"kind": "dots", "dots": 0b10011}),
         (CMD | brlapi.KEY_CMD_PASSDOTS, {"kind": "space"}),
+        (CMD | brlapi.KEY_CMD_PASSDOTS | getattr(brlapi, "DOTC", 0x100) | (brlapi.DOT2 | brlapi.DOT3 | brlapi.DOT4), {"kind": "chord", "dots": 0b1110}),
         (SYM | brlapi.KEY_SYM_BACKSPACE, {"kind": "backspace"}),
         (SYM | brlapi.KEY_SYM_LINEFEED, {"kind": "enter"}),
         (SYM | ord("a"), {"kind": "char", "char": "a"}),
@@ -38,6 +39,7 @@ def test_decode_brlapi_key(code, expected):
 def test_mock_command_parser():
     assert bb.MockBackend.parse_command("dots 1-2-5")["dots"] == 0b10011
     assert bb.MockBackend.parse_command("route 3") == {"type": "key", "kind": "route", "index": 3}
+    assert bb.MockBackend.parse_command("chord 2-3-4") == {"type": "key", "kind": "chord", "dots": 0b1110}
     assert bb.MockBackend.parse_command("nonsense") is None
 
 
