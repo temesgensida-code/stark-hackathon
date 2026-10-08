@@ -1,0 +1,8 @@
+node_modules
+node_modules.corrupt-*
+.next
+.env.local
+e2e
+test-results
+playwright-report
+tests

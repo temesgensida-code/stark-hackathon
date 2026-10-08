@@ -77,11 +77,20 @@ export function BrailleProvider({
       setStatus(`Braille display connected: ${display.info.name}.`);
       display.onDisconnect(() => {
         setInfo(null);
-        setStatus("Braille display disconnected.");
+        if (display.info.transport === "virtual") {
+          // A virtual display only drops when the server it talked to restarts. Replace it with the
+          // in-browser one, which needs no server, so the display never silently disappears.
+          setStatus("Virtual Braille display reconnected.");
+          void attachRef.current?.(VirtualBrailleDisplay.connectLocal());
+        } else {
+          setStatus("Braille display disconnected.");
+        }
       });
     },
     [manager],
   );
+  const attachRef = useRef<typeof attach | null>(null);
+  attachRef.current = attach;
 
   const connectHid = useCallback(async () => {
     if (!isWebHidSupported()) {
@@ -112,7 +121,7 @@ export function BrailleProvider({
   }, [attach]);
 
   const connectVirtual = useCallback(
-    async (mode: "local" | "ws" | "auto" = "auto") => {
+    async (mode: "local" | "ws" | "auto" = "local") => {
       try {
         setStatus("Connecting to Virtual Braille Simulator...");
         const d = await VirtualBrailleDisplay.connect({ mode });
@@ -131,7 +140,7 @@ export function BrailleProvider({
   }, [manager]);
 
   const setTable = useCallback((t: string) => {
-    manager.table = t;
+    void manager.setTable(t);
   }, [manager]);
 
   // Silent reconnect on load: approved HID display, then a running bridge, then virtual fallback.
@@ -146,7 +155,7 @@ export function BrailleProvider({
       if (bridge) return attach(bridge);
 
       // Automatic fallback to Virtual Simulator in local development when no hardware or bridge is detected
-      const virtual = await VirtualBrailleDisplay.connect({ mode: "auto", timeoutMs: 500 }).catch(() => null);
+      const virtual = await VirtualBrailleDisplay.connect({ mode: "local" }).catch(() => null);
       if (!cancelled && virtual) {
         await attach(virtual);
       }
